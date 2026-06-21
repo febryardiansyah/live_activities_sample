@@ -1,105 +1,134 @@
-//
-//  MyAppWidgetLiveActivity.swift
-//  MyAppWidget
-//
-//  Created by Febry Ardiansyah on 21/06/26.
-//
-
 import ActivityKit
 import WidgetKit
 import SwiftUI
 
-struct MyAppWidgetAttributes: ActivityAttributes, Identifiable {
+struct LiveActivitiesAppAttributes: ActivityAttributes, Identifiable {
     public typealias LiveDeliveryData = ContentState
-    
     public struct ContentState: Codable, Hashable {
-        // Dynamic stateful properties about your activity go here!
-        var emoji: String
+        var appGroupId: String
     }
-
-    // Fixed non-changing properties about your activity go here!
-    var name: String
-    
     var id = UUID()
 }
 
-extension MyAppWidgetAttributes {
-  func prefixedKey(_ key: String) -> String {
-    return "\(id)_\(key)"
-  }
-}
-
-// Create shared default with custom group
-let sharedDefault = UserDefaults(suiteName: "group.example.liveActivitiesSample")!
-
-struct FootballMatchApp: Widget {
-  var body: some WidgetConfiguration {
-    ActivityConfiguration(for: MyAppWidgetAttributes.self) { context in
-      // create your live activity widget extension here
-      // to access Flutter properties:
-      let myVariableFromFlutter = sharedDefault.string(forKey: context.attributes.prefixedKey("myVariableFromFlutter"))!
-
-      
+extension LiveActivitiesAppAttributes {
+    func prefixedKey(_ key: String) -> String {
+        return "\(id)_\(key)"
     }
-  }
 }
+
+let sharedDefault = UserDefaults(suiteName: "group.example.liveActivitiesSample")!
 
 struct MyAppWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
-        ActivityConfiguration(for: MyAppWidgetAttributes.self) { context in
-            // Lock screen/banner UI goes here
-            VStack {
-                Text("Hello \(context.state.emoji)")
+        ActivityConfiguration(for: LiveActivitiesAppAttributes.self) { context in
+            let name = sharedDefault.string(forKey: context.attributes.prefixedKey("name")) ?? "Pizza"
+            let ingredient = sharedDefault.string(forKey: context.attributes.prefixedKey("ingredient")) ?? ""
+            let quantity = sharedDefault.integer(forKey: context.attributes.prefixedKey("quantity"))
+            let status = sharedDefault.string(forKey: context.attributes.prefixedKey("status")) ?? "preparing"
+            return HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(name)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    if !ingredient.isEmpty {
+                        Text(ingredient)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack {
+                        Image(systemName: statusIcon(for: status))
+                            .foregroundColor(statusColor(for: status))
+                        Text(statusText(for: status))
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                }
+                Spacer()
+                VStack(alignment: .trailing) {
+                    Text("x\(quantity)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Image(systemName: "shippingbox.fill")
+                        .font(.title3)
+                        .foregroundColor(.orange)
+                }
             }
-            .activityBackgroundTint(Color.cyan)
+            .padding()
+            .activityBackgroundTint(Color.cyan.opacity(0.2))
             .activitySystemActionForegroundColor(Color.black)
-
         } dynamicIsland: { context in
-            DynamicIsland {
-                // Expanded UI goes here.  Compose the expanded UI through
-                // various regions, like leading/trailing/center/bottom
+            let name = sharedDefault.string(forKey: context.attributes.prefixedKey("name")) ?? "Pizza"
+            let quantity = sharedDefault.integer(forKey: context.attributes.prefixedKey("quantity"))
+            let status = sharedDefault.string(forKey: context.attributes.prefixedKey("status")) ?? "preparing"
+            return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text("Leading")
+                    VStack(alignment: .leading) {
+                        Text(name)
+                            .font(.headline)
+                        Text("x\(quantity)")
+                            .font(.caption)
+                    }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text("Trailing")
+                    Image(systemName: statusIcon(for: status))
+                        .font(.title2)
+                        .foregroundColor(statusColor(for: status))
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text("Bottom \(context.state.emoji)")
-                    // more content
+                    HStack {
+                        Image(systemName: statusIcon(for: status))
+                        Text(statusText(for: status))
+                            .font(.caption)
+                        Spacer()
+                        Text("Qty: \(quantity)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             } compactLeading: {
-                Text("L")
+                Image(systemName: "shippingbox.fill")
+                    .font(.caption)
+                    .foregroundColor(.orange)
             } compactTrailing: {
-                Text("T \(context.state.emoji)")
+                Text("x\(quantity)")
+                    .font(.caption2)
+                    .fontWeight(.bold)
             } minimal: {
-                Text(context.state.emoji)
+                Image(systemName: statusIcon(for: status))
+                    .font(.caption)
+                    .foregroundColor(statusColor(for: status))
             }
-            .widgetURL(URL(string: "http://www.apple.com"))
-            .keylineTint(Color.red)
+            .keylineTint(Color.orange)
         }
     }
-}
 
-extension MyAppWidgetAttributes {
-    fileprivate static var preview: MyAppWidgetAttributes {
-        MyAppWidgetAttributes(name: "World")
+    private func statusIcon(for status: String) -> String {
+        switch status {
+        case "preparing": return "flame.fill"
+        case "baking": return "flame.fill"
+        case "delivering": return "bicycle"
+        case "delivered": return "checkmark.circle.fill"
+        default: return "flame.fill"
+        }
     }
-}
 
-extension MyAppWidgetAttributes.ContentState {
-    fileprivate static var smiley: MyAppWidgetAttributes.ContentState {
-        MyAppWidgetAttributes.ContentState(emoji: "😀")
-     }
-     
-     fileprivate static var starEyes: MyAppWidgetAttributes.ContentState {
-         MyAppWidgetAttributes.ContentState(emoji: "🤩")
-     }
-}
+    private func statusText(for status: String) -> String {
+        switch status {
+        case "preparing": return "Preparing"
+        case "baking": return "Baking"
+        case "delivering": return "On the way"
+        case "delivered": return "Delivered"
+        default: return "Preparing"
+        }
+    }
 
-#Preview("Notification", as: .content, using: MyAppWidgetAttributes.preview) {
-   MyAppWidgetLiveActivity()
-} contentStates: {
-    MyAppWidgetAttributes.ContentState.smiley
-    MyAppWidgetAttributes.ContentState.starEyes
+    private func statusColor(for status: String) -> Color {
+        switch status {
+        case "preparing": return .orange
+        case "baking": return .red
+        case "delivering": return .blue
+        case "delivered": return .green
+        default: return .orange
+        }
+    }
 }
